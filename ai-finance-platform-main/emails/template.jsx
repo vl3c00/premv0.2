@@ -35,7 +35,7 @@ const PREVIEW_DATA = {
     },
   },
   budgetAlert: {
-    userName: "John Doe",
+    userName: "",
     type: "budget-alert",
     data: {
       percentageUsed: 85,
@@ -110,7 +110,7 @@ export default function EmailTemplate({
             )}
 
             <Text style={styles.footer}>
-              Thank you for using Welth. Keep tracking your finances for better
+              Thank you for using trcBudg8. Keep tracking your finances for better
               financial health!
             </Text>
           </Container>
