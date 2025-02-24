@@ -8,46 +8,44 @@ const isProtectedRoute = createRouteMatcher([
   "/transaction(.*)",
 ]);
 
-// Create Arcjet middleware
 const aj = arcjet({
   key: process.env.ARCJET_KEY,
-  // characteristics: ["userId"], // Track based on Clerk userId
   rules: [
-    // Shield protection for content and security
-    shield({
-      mode: "LIVE",
-    }),
+    shield({ mode: "LIVE" }),
     detectBot({
-      mode: "LIVE", // will block requests. Use "DRY_RUN" to log only
-      allow: [
-        "CATEGORY:SEARCH_ENGINE", // Google, Bing, etc
-        "GO_HTTP", // For Inngest
-        // See the full list at https://arcjet.com/bot-list
-      ],
+      mode: "LIVE",
+      allow: ["CATEGORY:SEARCH_ENGINE", "GO_HTTP"],
     }),
   ],
 });
 
-// Create base Clerk middleware
 const clerk = clerkMiddleware(async (auth, req) => {
   const { userId } = await auth();
+  const token = req.cookies.get("userToken");
+  const tokenExpiration = req.cookies.get("userTokenExpiration");
 
-  if (!userId && isProtectedRoute(req)) {
-    const { redirectToSignIn } = await auth();
-    return redirectToSignIn();
+  const isTokenExpired = tokenExpiration ? new Date() > new Date(tokenExpiration) : true;
+
+  if (isProtectedRoute(req)) {
+    if (!token || isTokenExpired) {
+      console.log("Token missing or expired, redirecting to token entry...");
+      return NextResponse.redirect(new URL(`/enter-token?redirect=${req.nextUrl.pathname}`, req.url));
+    }
+
+    if (!userId) {
+      console.log("User not authenticated, redirecting to sign-in...");
+      return NextResponse.redirect(new URL("/sign-in", req.url));
+    }
   }
 
   return NextResponse.next();
 });
 
-// Chain middlewares - ArcJet runs first, then Clerk
 export default createMiddleware(aj, clerk);
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };
